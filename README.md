@@ -52,7 +52,16 @@ python -m pytest -q                                           # 테스트
 - `.github/workflows/pages.yml` 이 평일 16:40(KST)마다 데이터를 갱신하고 배포
 - 실험 기록과 검증 잠금은 **이 기기 브라우저에만** 저장됩니다
 
-처음 한 번: 저장소 **Settings → Pages → Source 를 "GitHub Actions"** 로 설정하세요.
+처음 한 번 설정
+1. 저장소 **Settings → Pages → Source 를 "GitHub Actions"** 로 설정
+2. **Settings → Secrets and variables → Actions → New repository secret** 에서 이름 `STATICRYPT_PASSWORD`, 값에 사이트 비밀번호(16자 이상 무작위 권장) 등록
+
+### 비밀번호 보호 (StatiCrypt)
+- 배포 때 `scripts/bundle_web.py` 가 HTML·CSS·JS 를 `index.html` 한 파일로 묶고, StatiCrypt(AES-256, PBKDF2 60만 회)로 암호화합니다.
+- 비밀번호가 Secrets 에 없으면 배포를 멈춥니다 (암호 없이 공개되지 않도록).
+- `.staticrypt.json` 의 솔트는 비밀값이 아니며, 매일 재배포해도 '로그인 유지'가 풀리지 않게 고정해 둔 것입니다.
+- 데이터(`data/`)는 공개 시세라 암호화하지 않습니다. 저장소가 공개라 코드 자체도 GitHub 에서는 보입니다 — 이 비밀번호는 '배포된 화면을 남이 쓰지 못하게' 하는 용도입니다.
+- 로그아웃: 주소 끝에 `#staticrypt_logout` 을 붙여 접속
 
 로컬에서 보기
 ```bash

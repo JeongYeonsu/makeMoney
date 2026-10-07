@@ -68,9 +68,37 @@ jobs:
           echo "::warning::실데이터 수집에 실패해 가상 데이터로 배포합니다. 로그를 확인하세요."
           python scripts/build_web_data.py --source sample
 
+      # 화면 코드를 index.html 한 파일로 묶고 StatiCrypt 로 암호화 (데이터는 공개 시세라 그대로)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: 화면 코드 묶기
+        run: python scripts/bundle_web.py --out dist
+      - name: 비밀번호로 암호화
+        env:
+          STATICRYPT_PASSWORD: ${{ secrets.STATICRYPT_PASSWORD }}
+        run: |
+          if [ -z "$STATICRYPT_PASSWORD" ]; then
+            echo "::error::저장소 Secrets 에 STATICRYPT_PASSWORD 가 없습니다. 암호 없이 배포하지 않습니다."
+            exit 1
+          fi
+          npx --yes staticrypt@3.5.4 dist/index.html -d dist --remember 30 \
+            --template-title "종가베팅 백테스터" \
+            --template-instructions "비밀번호를 입력하세요" \
+            --template-placeholder "비밀번호" \
+            --template-button "열기" \
+            --template-remember "이 기기에서 30일간 로그인 유지" \
+            --template-error "비밀번호가 틀렸어요" \
+            --template-toggle-show "보기" \
+            --template-toggle-hide "숨기기" \
+            --template-color-primary "#15171C" \
+            --template-color-secondary "#F4F3EE"
+          # 암호화 전 코드가 남아 있지 않은지 확인
+          if grep -q "countTrades" dist/index.html; then echo "::error::암호화되지 않은 코드가 남아 있습니다"; exit 1; fi
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: web
+          path: dist
       - id: deploy
         uses: actions/deploy-pages@v4
