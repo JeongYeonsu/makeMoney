@@ -1,0 +1,24 @@
+# 파라미터 스윕 예시: {변수} 자리에 값을 바꿔 넣어 모든 조합을 실행합니다.
+name: 신고가_거래대금_sweep
+
+data:
+  source: sample
+
+periods:
+  train: [2018-01-01, 2023-12-31]
+  test:  [2024-01-01, 2026-09-30]
+
+filters:
+  - change_pct between [{chg_min}, 15]
+  - trade_value >= 30000000000
+  - trade_value_ratio_20 >= {tv_ratio}
+  - close_to_high >= 0.97
+  - days_listed >= 60
+
+sweep:
+  chg_min: [3, 5, 7]
+  tv_ratio: [2, 3, 5]
+
+rank_by: trade_value
+max_positions: 3
+exit: next_open

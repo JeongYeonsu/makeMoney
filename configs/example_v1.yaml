@@ -1,0 +1,35 @@
+# 예시 전략 — 수익성을 보장하는 조건이 아니라, 문법과 구조를 보여주는 견본입니다.
+name: 신고가_거래대금_v1
+
+data:
+  source: sample          # sample(가상) | fdr(실제 일봉, 인터넷 필요)
+  fdr:
+    markets: [KOSPI, KOSDAQ]
+    min_marcap: 100000000000   # 시총 1,000억 이상만 수집 (수집 시간 단축)
+  # 새 데이터는 여기에 추가 (date, code 컬럼 CSV)
+  # extra:
+  #   - {type: csv, name: flow, path: data_cache/flow.csv, availability: after_close}
+
+periods:
+  train: [2018-01-01, 2023-12-31]   # 조건 찾기용 — 마음껏 반복
+  test:  [2024-01-01, 2026-09-30]   # 최종 확인용 — 한 번만
+
+# 진입 조건 (모두 AND). 왜 이 조건인지 주석으로 남기세요.
+filters:
+  - change_pct between [5, 15]        # 강하게 올랐지만 상한가 근처는 제외
+  - trade_value >= 30000000000        # 거래대금 300억 이상: 체결 가능성·관심도
+  - trade_value_ratio_20 >= 3         # 평소 대비 3배 이상 돈이 몰림
+  - close_to_high >= 0.97             # 고가 근처 마감 = 매수세 유지
+  - new_high_60 == 1                  # 60일 신고가 돌파
+  - days_listed >= 60                 # 신규상장 직후 제외
+
+rank_by: trade_value       # 조건 충족 종목이 많으면 이 값이 큰 순서로
+max_positions: 3           # 하루 최대 보유 종목 수 (자금 3등분)
+
+exit: next_open            # next_open | next_close | next_day_tp_sl
+# exit: {model: next_day_tp_sl, take_profit_pct: 4, stop_loss_pct: 3}
+
+costs:
+  commission: 0.00015      # 편도 수수료
+  sell_tax: 0.0020         # 매도 거래세 — 최신 세율 확인 후 수정
+  slippage: 0.0015         # 편도 슬리피지 — 일봉 종가 ≠ 15:19 가격이므로 넉넉하게

@@ -1,0 +1,21 @@
+# 비밀값 — 절대 커밋 금지
+.env
+*.key
+secrets/
+
+# 데이터 캐시 (스크립트로 다시 받을 수 있음)
+data_cache/
+*.parquet
+
+# 실험 결과 중 대용량 파일 (요약표 experiments.csv 는 커밋)
+results/*
+!results/.gitkeep
+!results/experiments.csv
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+.pytest_cache/

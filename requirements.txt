@@ -1,0 +1,5 @@
+pandas>=2.0
+numpy>=1.24
+pyyaml>=6.0
+finance-datareader>=0.9
+pytest>=7.0
