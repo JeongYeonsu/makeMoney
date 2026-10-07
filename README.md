@@ -38,6 +38,28 @@ python -m pytest -q                                           # 테스트
 
 폰에서는 `notebooks/colab_backtest.ipynb` 를 Google Colab 으로 열어 실행하세요.
 
+## 웹 백테스터 (GitHub Pages)
+
+폰 브라우저에서 조건을 슬라이더로 조절하고 바로 백테스트하는 화면입니다.
+
+- **전략 만들기**: 조건 카드 추가·삭제, 예상 매매 빈도 즉시 표시, 청산 방식·종목 수·비용 설정
+- **결과 보기**: 핵심 지표, 코스피 대비 수익 곡선, 낙폭, 연도별 수익, 매매별 선정 이유, 경고 배너, 조건 파일(YAML) 내보내기
+- **실험 비교**: 실험 기록 겹쳐 보기, 두 조건을 바꿔가며 보는 안정성 히트맵, 검증 구간 1회 잠금
+
+구조
+- `scripts/build_web_data.py` 가 파이썬 지표 레지스트리로 값을 계산해 `web/data/` 에 저장 (지표 정의는 파이썬 한 곳)
+- `web/engine.js` 가 브라우저에서 매수·청산·성과를 계산 — `tests/test_web_parity.py` 가 파이썬 엔진과 결과가 같은지 검증
+- `.github/workflows/pages.yml` 이 평일 16:40(KST)마다 데이터를 갱신하고 배포
+- 실험 기록과 검증 잠금은 **이 기기 브라우저에만** 저장됩니다
+
+처음 한 번: 저장소 **Settings → Pages → Source 를 "GitHub Actions"** 로 설정하세요.
+
+로컬에서 보기
+```bash
+python scripts/build_web_data.py --source sample   # 또는 --source fdr
+cd web && python -m http.server 8000                # http://localhost:8000
+```
+
 ## 조건 문법
 
 ```yaml
@@ -63,12 +85,14 @@ upper_tail_ratio, ma20, above_ma20, new_high_60, days_listed, prev_close`
 - 일봉 종가를 15:19 판정가의 근사치로 사용 → 슬리피지로 보정
 - FinanceDataReader 는 현재 상장 종목만 수집 → 상장폐지 종목 누락(생존 편향)
 - 거래세 등 비용 기본값은 반드시 최신 기준으로 확인
+- 웹 데이터의 종목은 '현재' 시가총액 1,000억 이상 기준으로 골라서, 과거 시점엔 작았던 종목이 섞이는 편향이 있음
 
 ## 보안
 API 키·계좌번호·토큰은 `.env` 에만 저장합니다 (`.env.example` 참고). `.env` 는 커밋되지 않습니다.
 
 ## 로드맵
 - [x] 백테스트 엔진 v1 (어댑터, 지표 레지스트리, 조건 파일, 청산 모델, 실험 기록)
+- [x] 웹 백테스터 (GitHub Pages, 자동 데이터 갱신)
 - [ ] 실제 데이터로 기본 전략 검증
 - [ ] 키움 REST API 연동: 토큰, 조건검색(ka10171/ka10172), 텔레그램 알림
 - [ ] 모의투자 자동 운영

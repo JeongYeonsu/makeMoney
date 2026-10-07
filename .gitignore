@@ -19,3 +19,7 @@ __pycache__/
 venv/
 .ipynb_checkpoints/
 .pytest_cache/
+
+# 웹 데이터 (GitHub Actions 가 생성·배포)
+web/data/
+node_modules/

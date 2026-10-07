@@ -1,0 +1,76 @@
+# 웹 백테스터 데이터 갱신 + GitHub Pages 배포
+# - 평일 16:40(KST) 장 마감 후 자동 실행, main 에 push 할 때, 또는 Actions 탭에서 수동 실행
+# - 저장소 Settings → Pages → Source 를 "GitHub Actions" 로 설정해야 배포됩니다
+name: Web backtester
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "40 7 * * 1-5"   # UTC 07:40 = KST 16:40
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install -r requirements.txt
+      - name: 테스트 (파이썬 엔진 + 웹 엔진 결과 일치)
+        run: python -m pytest -q
+
+  build-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      # 종목별 일봉 캐시: 처음 한 번만 전체 수집, 이후엔 새로 생긴 날짜만 받음
+      - uses: actions/cache@v4
+        with:
+          path: data_cache
+          key: daily-${{ github.run_id }}
+          restore-keys: daily-
+
+      - name: 실제 일봉으로 웹 데이터 생성
+        id: real
+        continue-on-error: true
+        run: python scripts/build_web_data.py --source fdr
+
+      - name: 실패 시 가상 데이터로 대체 (화면에 '가상 데이터' 표시됨)
+        if: steps.real.outcome == 'failure'
+        run: |
+          echo "::warning::실데이터 수집에 실패해 가상 데이터로 배포합니다. 로그를 확인하세요."
+          python scripts/build_web_data.py --source sample
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deploy
+        uses: actions/deploy-pages@v4

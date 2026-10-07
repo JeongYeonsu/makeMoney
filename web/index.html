@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F4F3EE">
+<title>종가베팅 백테스터</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app">
+  <main id="screen" aria-live="polite">
+    <div class="loading">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>데이터를 불러오는 중…</p>
+    </div>
+  </main>
+  <nav class="tabs" aria-label="화면 전환">
+    <a href="#strategy" data-tab="strategy">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h14M4 11h9M4 16h11"/><circle cx="16" cy="11" r="2"/></svg>전략</a>
+    <a href="#results" data-tab="results">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 17l5-6 4 3 7-9"/></svg>결과</a>
+    <a href="#compare" data-tab="compare">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="12" y="3" width="7" height="7"/><rect x="3" y="12" width="7" height="7"/><rect x="12" y="12" width="7" height="7"/></svg>비교</a>
+  </nav>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
