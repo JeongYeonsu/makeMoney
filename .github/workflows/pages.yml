@@ -82,7 +82,8 @@ jobs:
             echo "::error::저장소 Secrets 에 STATICRYPT_PASSWORD 가 없습니다. 암호 없이 배포하지 않습니다."
             exit 1
           fi
-          npx --yes staticrypt@3.5.4 dist/index.html -d dist --remember 30 \
+          # --short: 14자 미만 비밀번호일 때 뜨는 확인 질문을 건너뜀 (CI 에서는 대답할 수 없음)
+          npx --yes staticrypt@3.5.4 dist/index.html -d dist --remember 30 --short \
             --template-title "종가베팅 백테스터" \
             --template-instructions "비밀번호를 입력하세요" \
             --template-placeholder "비밀번호" \
