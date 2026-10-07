@@ -84,7 +84,7 @@ jobs:
           fi
           # --short: 14자 미만 비밀번호일 때 뜨는 확인 질문을 건너뜀 (CI 에서는 대답할 수 없음)
           npx --yes staticrypt@3.5.4 dist/index.html -d dist --remember 30 --short \
-            --template-title "종가베팅 백테스터" \
+            --template-title "JYS" \
             --template-instructions "비밀번호를 입력하세요" \
             --template-placeholder "비밀번호" \
             --template-button "열기" \
