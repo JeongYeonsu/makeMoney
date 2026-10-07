@@ -1,16 +1,41 @@
 import * as E from './engine.js';
 
-// ───────────────────────────────────────── 지표 카탈로그 (화면용)
+// ───────────────────────────────────────── 조건 섹션과 지표 카탈로그 (화면용)
+// 종가베팅 조건을 네 가지 질문으로 나눕니다.
+const SECTIONS = [
+  { id: 'size', title: '힘의 크기', q: '오늘 얼마나 강하게, 얼마나 많은 돈이 들어왔나',
+    icon: '<path d="M4 18V12M9 18V8M14 18V10M19 18V4"/>' },
+  { id: 'quality', title: '힘의 질', q: '그 힘이 끝까지 유지됐고, 추세 위에 있나',
+    icon: '<path d="M3 15c3 0 4-8 7-8s3 6 6 6 3-6 5-6"/>' },
+  { id: 'market', title: '시장 분위기', q: '오늘 시장 전체가 버텨주는 날인가',
+    icon: '<circle cx="12" cy="12" r="8"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>' },
+  { id: 'risk', title: '위험 요소', q: '밤사이 무너질 이유가 쌓여 있지 않나',
+    icon: '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M12 9v4M12 16v.5"/>' },
+];
+
 // kind: range(하한~상한) | min(이상) | max(이하) | bool(충족)
 const FEATURES = {
-  change_pct: { label: '당일 등락률', unit: '%', kind: 'range', min: 2, max: 30, step: 0.5, def: [5, 15], heatStep: 1 },
-  trade_value: { label: '거래대금', unit: '억', kind: 'min', min: 50, max: 3000, step: 50, def: 300, heatStep: 100 },
-  trade_value_ratio_20: { label: '20일 평균 대비 거래대금', unit: '배', kind: 'min', min: 1, max: 20, step: 0.5, def: 3, heatStep: 1 },
-  close_to_high: { label: '종가 / 고가', unit: '%', kind: 'min', min: 85, max: 100, step: 0.5, def: 97, heatStep: 1 },
-  upper_tail_ratio: { label: '윗꼬리 비율', unit: '%', kind: 'max', min: 0, max: 100, step: 5, def: 30, heatStep: 10 },
-  days_listed: { label: '상장 후 경과 거래일', unit: '일', kind: 'min', min: 0, max: 500, step: 20, def: 60, heatStep: 20 },
-  above_ma20: { label: '20일 이동평균선 위 마감', kind: 'bool' },
-  new_high_60: { label: '60일 신고가 돌파', kind: 'bool' },
+  // 힘의 크기
+  change_pct: { sec: 'size', label: '당일 등락률', hint: '상한을 두면 상한가 근처 종목을 뺄 수 있어요', unit: '%', kind: 'range', min: 2, max: 30, step: 0.5, def: [5, 15], heatStep: 1 },
+  trade_value: { sec: 'size', label: '거래대금', hint: '체결 가능성과 관심도의 최소 기준', unit: '억', kind: 'min', min: 50, max: 3000, step: 50, def: 300, heatStep: 100 },
+  trade_value_ratio_20: { sec: 'size', label: '평소 대비 거래대금', hint: '직전 20일 평균보다 몇 배 몰렸나', unit: '배', kind: 'min', min: 1, max: 20, step: 0.5, def: 3, heatStep: 1 },
+  trade_value_rank: { sec: 'size', label: '거래대금 순위', hint: '오늘 시장 전체에서 몇 위 안에 들었나', unit: '위', kind: 'max', min: 1, max: 300, step: 5, def: 30, heatStep: 10 },
+  body_pct: { sec: 'size', label: '장중 상승폭 (몸통)', hint: '시가에서 종가까지 얼마나 밀어올렸나', unit: '%', kind: 'min', min: -5, max: 20, step: 0.5, def: 2, heatStep: 1 },
+  // 힘의 질
+  close_to_high: { sec: 'quality', label: '고가 근처 마감', hint: '종가가 그날 고가의 몇 %에서 끝났나', unit: '%', kind: 'min', min: 85, max: 100, step: 0.5, def: 97, heatStep: 1 },
+  new_high_60: { sec: 'quality', label: '60일 신고가 돌파', hint: '직전 60일 최고 종가를 넘어섰나', kind: 'bool' },
+  above_ma20: { sec: 'quality', label: '20일선 위 마감', hint: '단기 추세선 위에서 끝났나', kind: 'bool' },
+  ma_aligned: { sec: 'quality', label: '이평선 정배열', hint: '5일 > 20일 > 60일선 순서로 놓였나', kind: 'bool' },
+  range_squeeze: { sec: 'quality', label: '돌파 전 변동성 수축', hint: '직전 5일 진폭 ÷ 20일 진폭. 1보다 작을수록 조용하다 터진 것', unit: '배', kind: 'max', min: 0.3, max: 2, step: 0.05, def: 0.8, heatStep: 0.1 },
+  gap_pct: { sec: 'quality', label: '시가 갭 상한', hint: '갭으로만 뜬 종목을 빼고 장중 상승을 고를 때', unit: '%', kind: 'max', min: -5, max: 15, step: 0.5, def: 3, heatStep: 1 },
+  // 시장 분위기
+  market_change: { sec: 'market', label: '지수 당일 등락', hint: '소속 시장(코스피·코스닥) 지수가 이만큼은 버텼나', unit: '%', kind: 'min', min: -5, max: 3, step: 0.1, def: -0.5, heatStep: 0.5 },
+  market_above_ma20: { sec: 'market', label: '지수 20일선 위', hint: '시장이 단기 상승 추세일 때만 매매', kind: 'bool' },
+  // 위험 요소
+  upper_tail_ratio: { sec: 'risk', label: '윗꼬리 비율', hint: '고가에서 밀린 정도. 길수록 매물 부담', unit: '%', kind: 'max', min: 0, max: 100, step: 5, def: 30, heatStep: 10 },
+  disparity_20: { sec: 'risk', label: '이격도 (과열)', hint: '종가 ÷ 20일선. 너무 높으면 이미 달린 종목', unit: '%', kind: 'max', min: 100, max: 200, step: 1, def: 130, heatStep: 5 },
+  up_streak: { sec: 'risk', label: '연속 상승일수', hint: '며칠째 올랐나. 길수록 차익 매물이 나오기 쉬움', unit: '일', kind: 'max', min: 0, max: 10, step: 1, def: 3, heatStep: 1 },
+  days_listed: { sec: 'risk', label: '상장 후 경과일', hint: '막 상장한 종목의 불안정한 움직임 제외', unit: '일', kind: 'min', min: 0, max: 500, step: 20, def: 60, heatStep: 20 },
 };
 const RANKS = { trade_value: '거래대금 큰 순', change_pct: '등락률 큰 순', trade_value_ratio_20: '거래대금 배수 큰 순' };
 const EXITS = [['next_open', '익일 시가'], ['next_close', '익일 종가'], ['next_day_tp_sl', '익절·손절']];
@@ -23,6 +48,8 @@ const DEFAULT_STRATEGY = {
     { f: 'trade_value', v: 300 },
     { f: 'trade_value_ratio_20', v: 3 },
     { f: 'close_to_high', v: 97 },
+    { f: 'market_above_ma20', v: 1 },
+    { f: 'up_streak', v: 3 },
   ],
   maxPos: 3,
   rankBy: 'trade_value',
@@ -66,6 +93,7 @@ const fmtVal = (f, v) => {
   const F = FEATURES[f];
   if (F.kind === 'bool') return '충족';
   if (F.kind === 'range') return `${v[0]}${F.unit} ~ ${v[1]}${F.unit}`;
+  if (f === 'trade_value_rank') return `${v}위 이내`;
   return `${F.kind === 'max' ? '≤' : '≥'} ${Number(v).toLocaleString('ko-KR')}${F.unit}`;
 };
 
@@ -169,10 +197,9 @@ function renderStrategy() {
   const s = state.strategy;
   const m = state.ds.meta;
   const used = new Set(s.conds.map((c) => c.f));
-  const free = Object.keys(FEATURES).filter((f) => !used.has(f));
   const locked = state.locks[hashStrategy(s)];
 
-  const condCards = s.conds.map((c, i) => {
+  const condCard = (c, i) => {
     const F = FEATURES[c.f];
     const rm = `<button class="icon-btn" type="button" data-act="rm" data-i="${i}" aria-label="${esc(F.label)} 조건 삭제">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>`;
@@ -183,9 +210,28 @@ function renderStrategy() {
     } else if (F.kind !== 'bool') {
       body = `<input type="range" min="${F.min}" max="${F.max}" step="${F.step}" value="${c.v}" data-ci="${i}" aria-label="${esc(F.label)}">`;
     }
-    return `<div class="card">
-      <div class="cond-head"><label>${esc(F.label)}</label><span style="display:flex;align-items:center;gap:6px"><span class="cond-val" id="cv-${i}">${fmtVal(c.f, c.v)}</span>${rm}</span></div>
+    return `<div class="cond">
+      <div class="cond-head"><span class="cond-name">${esc(F.label)}</span><span class="cond-right"><span class="cond-val" id="cv-${i}">${fmtVal(c.f, c.v)}</span>${rm}</span></div>
+      <p class="cond-hint">${esc(F.hint)}</p>
       ${body}</div>`;
+  };
+
+  const sections = SECTIONS.map((sec) => {
+    const items = s.conds.map((c, i) => [c, i]).filter(([c]) => FEATURES[c.f].sec === sec.id);
+    const free = Object.keys(FEATURES).filter((f) => FEATURES[f].sec === sec.id && !used.has(f));
+    const add = free.length ? `<div class="sec-add">
+        <select data-add="${sec.id}" aria-label="${sec.title}에 추가할 조건">${free.map((f) => `<option value="${f}">${esc(FEATURES[f].label)}</option>`).join('')}</select>
+        <button type="button" data-act="add" data-sec="${sec.id}">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>추가</button></div>` : '';
+    return `<section class="sec sec-${sec.id}" aria-labelledby="sec-${sec.id}">
+      <header class="sec-head">
+        <svg class="sec-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${sec.icon}</svg>
+        <div><h2 id="sec-${sec.id}">${sec.title}</h2><p>${sec.q}</p></div>
+        <span class="sec-count">${items.length ? `${items.length}개` : '없음'}</span>
+      </header>
+      ${items.map(([c, i]) => condCard(c, i)).join('')}
+      ${add}
+    </section>`;
   }).join('');
 
   const exitSeg = EXITS.map(([k, l]) => `<button type="button" data-act="exit" data-v="${k}" aria-pressed="${s.exit.model === k}">${l}</button>`).join('');
@@ -197,17 +243,13 @@ function renderStrategy() {
     <p class="muted" style="margin:0">익일 장중에 익절·손절선을 모두 건드리면 손절이 먼저라고 가정해요 (일봉으로는 순서를 알 수 없어서).</p>` : '';
 
   $screen.innerHTML = `
-    <div class="eyebrow"><span class="label">STRATEGY · 학습 ${m.periods.train[0].slice(0, 4)}–${m.periods.train[1].slice(0, 4)}</span>
+    <div class="eyebrow"><span class="label">학습 구간 ${m.periods.train[0].slice(0, 4)}–${m.periods.train[1].slice(0, 4)}</span>
       ${m.source === 'sample' ? '<span class="badge warn">가상 데이터</span>' : `<span class="badge">기준일 ${m.last_day}</span>`}</div>
     <h1>전략 만들기</h1>
     <label class="field">전략 이름<input type="text" value="${esc(s.name)}" data-name maxlength="40" autocomplete="off"></label>
 
-    <div class="row" style="margin-top:6px"><h2>진입 조건</h2><span class="muted">모두 충족 시 매수</span></div>
-    ${condCards || '<p class="muted">조건이 없어요. 아래에서 추가하세요.</p>'}
-    ${free.length ? `<div class="add-row">
-      <select class="plain" data-add aria-label="추가할 조건">${free.map((f) => `<option value="${f}">${esc(FEATURES[f].label)}</option>`).join('')}</select>
-      <button class="btn dashed" type="button" data-act="add">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>추가</button></div>` : ''}
+    <p class="lede">네 가지를 모두 통과한 종목만 장 마감 직전에 삽니다.</p>
+    ${sections}
 
     <div class="card dark">
       <div class="row"><span class="muted">이 조건이면 예상 매매 빈도</span><span class="muted">학습 구간 기준</span></div>
@@ -337,6 +379,8 @@ function renderResults() {
         <span>등락률 <b>${num(C.change_pct[i], 2)}%</b></span><span>거래대금 <b>${Math.round(C.trade_value[i]).toLocaleString('ko-KR')}억</b></span>
         <span>평균 대비 <b>${num(C.trade_value_ratio_20[i], 1)}배</b></span><span>종가/고가 <b>${num(C.close_to_high[i], 1)}%</b></span>
         <span>윗꼬리 <b>${num(C.upper_tail_ratio[i], 0)}%</b></span><span>상장 경과 <b>${C.days_listed[i]}일</b></span>
+        <span>거래대금 순위 <b>${C.trade_value_rank[i]}위</b></span><span>이격도 <b>${num(C.disparity_20[i], 0)}%</b></span>
+        <span>연속 상승 <b>${C.up_streak[i]}일</b></span><span>지수 등락 <b>${pct(C.market_change[i] / 100, 2, true)}</b></span>
         <span>익일 시가 <b>${pct(C.r_open[i] - 1, 2, true)}</b></span><span>익일 종가 <b>${pct(C.r_close[i] - 1, 2, true)}</b></span>
         <span>비용 전 <b>${pct(t.gross, 2, true)}</b></span><span>비용 후 <b>${pct(t.ret, 2, true)}</b></span></div>` : ''}</div>`;
   }).join('');
@@ -575,7 +619,7 @@ function renderCompare() {
   }
 
   $screen.innerHTML = `
-    <div class="eyebrow"><span class="label">EXPERIMENTS</span>${state.ds.meta.source === 'sample' ? '<span class="badge warn">가상 데이터</span>' : ''}</div>
+    <div class="eyebrow"><span class="label">학습 구간 기록</span>${state.ds.meta.source === 'sample' ? '<span class="badge warn">가상 데이터</span>' : ''}</div>
     <h1>실험 비교</h1>
     <p class="muted" style="margin:0">학습 구간 실험 <b class="mono" style="color:var(--ink)">${trainCount}</b>회 · 많이 돌릴수록 최고 결과는 부풀려져요</p>
 
@@ -664,7 +708,7 @@ $screen.addEventListener('click', (ev) => {
   const act = b.dataset.act;
   if (act === 'rm') { s.conds.splice(+b.dataset.i, 1); saveStrategy(); renderStrategy(); }
   else if (act === 'add') {
-    const f = $screen.querySelector('[data-add]').value;
+    const f = $screen.querySelector(`[data-add="${b.dataset.sec}"]`).value;
     const F = FEATURES[f];
     s.conds.push({ f, v: F.kind === 'range' ? [...F.def] : F.kind === 'bool' ? 1 : F.def });
     saveStrategy(); renderStrategy();

@@ -24,14 +24,17 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from closingbet import features  # noqa: E402
-from closingbet.data import FdrDailyAdapter, SampleDailyAdapter, build_panel  # noqa: E402
+from closingbet.data import (FdrDailyAdapter, FdrIndexAdapter, SampleDailyAdapter,  # noqa: E402
+                             SampleIndexAdapter, build_panel)
 
 KST = timezone(timedelta(hours=9))
 
 PREFILTER = {"change_pct_min": 2.0, "trade_value_eok_min": 50.0}
 
 FEATURES = ["change_pct", "trade_value", "trade_value_ratio_20", "close_to_high",
-            "upper_tail_ratio", "above_ma20", "new_high_60", "days_listed"]
+            "upper_tail_ratio", "above_ma20", "new_high_60", "days_listed",
+            "trade_value_rank", "body_pct", "gap_pct", "ma_aligned", "range_squeeze",
+            "disparity_20", "up_streak", "market_change", "market_above_ma20"]
 
 # (웹 컬럼 이름, dtype, 변환 함수) — float32 를 앞에 두어 4바이트 정렬 유지
 COLUMNS = [
@@ -44,11 +47,20 @@ COLUMNS = [
     ("r_high", "f4", lambda p: p["n_high"] / p["close"]),
     ("r_low", "f4", lambda p: p["n_low"] / p["close"]),
     ("r_close", "f4", lambda p: p["n_close"] / p["close"]),
+    ("body_pct", "f4", lambda p: p["body_pct"]),
+    ("gap_pct", "f4", lambda p: p["gap_pct"]),
+    ("range_squeeze", "f4", lambda p: p["range_squeeze"]),
+    ("disparity_20", "f4", lambda p: p["disparity_20"]),
+    ("market_change", "f4", lambda p: p["market_change"]),
+    ("trade_value_rank", "u2", lambda p: p["trade_value_rank"].clip(upper=65535)),
     ("day", "u2", lambda p: p["day"]),
     ("code", "u2", lambda p: p["code_idx"]),
     ("days_listed", "u2", lambda p: p["days_listed"].clip(upper=65535)),
     ("above_ma20", "u1", lambda p: p["above_ma20"]),
     ("new_high_60", "u1", lambda p: p["new_high_60"]),
+    ("ma_aligned", "u1", lambda p: p["ma_aligned"]),
+    ("up_streak", "u1", lambda p: p["up_streak"].clip(upper=255)),
+    ("market_above_ma20", "u1", lambda p: p["market_above_ma20"]),
 ]
 
 
@@ -72,8 +84,11 @@ def load_benchmark(source: str, days: pd.DatetimeIndex, panel: pd.DataFrame) -> 
 
 def build(source: str, out_dir: Path, start: str, min_marcap: float, end: str | None = None) -> dict:
     end = end or datetime.now(KST).strftime("%Y-%m-%d")
-    daily = SampleDailyAdapter(n_codes=120) if source == "sample" else FdrDailyAdapter(min_marcap=min_marcap)
-    panel = build_panel([daily], start, end)
+    if source == "sample":
+        daily, index = SampleDailyAdapter(n_codes=120), SampleIndexAdapter()
+    else:
+        daily, index = FdrDailyAdapter(min_marcap=min_marcap), FdrIndexAdapter()
+    panel = build_panel([daily, index], start, end)
     panel = features.compute(panel, FEATURES)
 
     g = panel.groupby("code", sort=False)
@@ -108,7 +123,7 @@ def build(source: str, out_dir: Path, start: str, min_marcap: float, end: str | 
 
     names = getattr(daily, "names", {}) or {}
     meta = {
-        "version": 1,
+        "version": 2,
         "source": source,
         "built_at": datetime.now(KST).strftime("%Y-%m-%d %H:%M KST"),
         "first_day": days[0].strftime("%Y-%m-%d"),

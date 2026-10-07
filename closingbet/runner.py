@@ -9,7 +9,7 @@ import yaml
 
 from . import engine, features, report
 from .conditions import apply_rules, parse_rules, required_columns
-from .data import CsvAdapter, FdrDailyAdapter, SampleDailyAdapter, build_panel
+from .data import CsvAdapter, FdrDailyAdapter, FdrIndexAdapter, SampleDailyAdapter, SampleIndexAdapter, build_panel
 
 WARMUP_DAYS = 400  # 이동평균 등 지표 계산용 앞쪽 여유 기간(달력일)
 
@@ -27,7 +27,8 @@ def make_adapters(data_cfg: dict, source_override: str | None = None):
         daily = FdrDailyAdapter(**(data_cfg.get("fdr") or {}))
     else:
         raise ValueError(f"알 수 없는 데이터 소스: {source} (sample | fdr)")
-    adapters = [daily]
+    # 시장 지수(코스피·코스닥) — market_change, market_above_ma20 지표에 사용
+    adapters = [daily, SampleIndexAdapter() if source == "sample" else FdrIndexAdapter()]
     for ex in data_cfg.get("extra") or []:
         if ex.get("type", "csv") == "csv":
             adapters.append(CsvAdapter(ex["name"], ex["path"], ex.get("availability", "intraday")))

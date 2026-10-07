@@ -42,7 +42,7 @@ python -m pytest -q                                           # 테스트
 
 폰 브라우저에서 조건을 슬라이더로 조절하고 바로 백테스트하는 화면입니다.
 
-- **전략 만들기**: 조건 카드 추가·삭제, 예상 매매 빈도 즉시 표시, 청산 방식·종목 수·비용 설정
+- **전략 만들기**: 조건을 네 섹션(힘의 크기·힘의 질·시장 분위기·위험 요소)으로 나눠 추가·조절, 예상 매매 빈도 즉시 표시, 청산 방식·종목 수·비용 설정
 - **결과 보기**: 핵심 지표, 코스피 대비 수익 곡선, 낙폭, 연도별 수익, 매매별 선정 이유, 경고 배너, 조건 파일(YAML) 내보내기
 - **실험 비교**: 실험 기록 겹쳐 보기, 두 조건을 바꿔가며 보는 안정성 히트맵, 검증 구간 1회 잠금
 
@@ -79,8 +79,14 @@ filters:
   - custom:strong_close
 ```
 
-사용 가능한 기본 지표: `change_pct, trade_value, trade_value_ratio_20, close_to_high,
-upper_tail_ratio, ma20, above_ma20, new_high_60, days_listed, prev_close`
+사용 가능한 기본 지표
+
+| 섹션 | 지표 |
+|---|---|
+| 힘의 크기 | `change_pct`, `trade_value`, `trade_value_ratio_20`, `trade_value_rank`, `body_pct` |
+| 힘의 질 | `close_to_high`, `new_high_60`, `above_ma20`, `ma_aligned`, `range_squeeze`, `gap_pct` |
+| 시장 분위기 | `market_change`, `market_above_ma20` (코스피·코스닥 지수 데이터 사용) |
+| 위험 요소 | `upper_tail_ratio`, `disparity_20`, `up_streak`, `days_listed` |
 
 청산 모델: `next_open`(익일 시가), `next_close`(익일 종가), `next_day_tp_sl`(익일 익절/손절)
 

@@ -18,7 +18,8 @@ def build_panel(adapters: list[DataAdapter], start: str, end: str) -> pd.DataFra
     """첫 번째 어댑터는 반드시 일봉(name='daily'). 나머지는 left-join 됩니다.
 
     다른 어댑터의 컬럼은 `어댑터이름__컬럼` 형태로 붙어 이름 충돌을 막습니다.
-    code 가 없는 어댑터(예: 지수, 시장 전체 지표)는 date 로만 붙습니다.
+    code 가 없고 market 이 있는 어댑터(예: 시장 지수)는 (date, market) 으로,
+    둘 다 없는 어댑터는 date 로만 붙습니다.
     """
     if not adapters or adapters[0].name != "daily":
         raise ValueError("첫 번째 어댑터는 name='daily' 인 일봉 어댑터여야 합니다")
@@ -29,7 +30,12 @@ def build_panel(adapters: list[DataAdapter], start: str, end: str) -> pd.DataFra
         df = ad.load(start, end)
         if ad.availability == "after_close":
             df = _shift_after_close(df, trading_days)
-        keys = ["date", "code"] if "code" in df.columns else ["date"]
+        if "code" in df.columns:
+            keys = ["date", "code"]
+        elif "market" in df.columns and "market" in panel.columns:
+            keys = ["date", "market"]
+        else:
+            keys = ["date"]
         df = df.rename(columns={c: f"{ad.name}__{c}" for c in df.columns if c not in keys})
         panel = panel.merge(df, on=keys, how="left")
 

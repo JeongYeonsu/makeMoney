@@ -3,6 +3,7 @@
 - SampleDailyAdapter : 인터넷 없이 구조를 시험해보는 가상 일봉
 - CsvAdapter         : 아무 CSV(수급, 테마, 뉴스점수 등)를 붙이는 범용 어댑터
 - FdrDailyAdapter    : FinanceDataReader 로 실제 국내 일봉 수집(+로컬 캐시)
+- SampleIndexAdapter / FdrIndexAdapter : 시장 지수(코스피·코스닥) — (date, market) 으로 붙음
 
 일봉(daily) 어댑터는 반드시 open, high, low, close, volume 컬럼을 제공해야 합니다.
 """
@@ -51,7 +52,56 @@ class SampleDailyAdapter(DataAdapter):
                 rows.append((d, code, open_, high, low, close, vol))
                 price = close
         df = pd.DataFrame(rows, columns=["date", "code", "open", "high", "low", "close", "volume"])
+        df["market"] = np.where(df["code"].str[-1].astype(int) % 2 == 0, "KOSPI", "KOSDAQ")
         return self.validate(df)
+
+
+class _IndexAdapterBase(DataAdapter):
+    """시장 지수: date | market | close. 종가베팅 판정 시각의 지수 수준을 당일 종가로 근사."""
+
+    name = "index"
+    availability = "intraday"
+
+    def validate(self, df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+        df["date"] = pd.to_datetime(df["date"])
+        if df.duplicated(["date", "market"]).any():
+            raise ValueError("index: (date, market) 중복")
+        return df.sort_values(["market", "date"]).reset_index(drop=True)
+
+
+class SampleIndexAdapter(_IndexAdapterBase):
+    """가상 지수 (인터넷 불필요)."""
+
+    def __init__(self, seed: int = 7):
+        self.seed = seed
+
+    def load(self, start: str, end: str) -> pd.DataFrame:
+        rng = np.random.default_rng(self.seed)
+        dates = pd.bdate_range(start, end)
+        frames = []
+        for m, vol in (("KOSPI", 0.010), ("KOSDAQ", 0.013)):
+            close = 1000 * np.cumprod(1 + rng.normal(0.0002, vol, len(dates)))
+            frames.append(pd.DataFrame({"date": dates, "market": m, "close": close}))
+        return self.validate(pd.concat(frames))
+
+
+class FdrIndexAdapter(_IndexAdapterBase):
+    """FinanceDataReader 코스피(KS11)·코스닥(KQ11) 지수."""
+
+    SYMBOLS = {"KOSPI": "KS11", "KOSDAQ": "KQ11"}
+
+    def load(self, start: str, end: str) -> pd.DataFrame:
+        import FinanceDataReader as fdr
+
+        frames = []
+        for m, sym in self.SYMBOLS.items():
+            raw = fdr.DataReader(sym, start, end)
+            df = raw.reset_index()
+            df = df.rename(columns={df.columns[0]: "date", "Close": "close"})[["date", "close"]]
+            df["market"] = m
+            frames.append(df)
+        return self.validate(pd.concat(frames))
 
 
 class CsvAdapter(DataAdapter):

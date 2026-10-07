@@ -15,11 +15,11 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from build_web_data import build  # noqa: E402
+from build_web_data import FEATURES, build  # noqa: E402
 
 from closingbet import engine, features, report  # noqa: E402
 from closingbet.conditions import apply_rules, parse_rules  # noqa: E402
-from closingbet.data import SampleDailyAdapter, build_panel  # noqa: E402
+from closingbet.data import SampleDailyAdapter, SampleIndexAdapter, build_panel  # noqa: E402
 
 pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="node 필요")
 
@@ -46,6 +46,20 @@ CASES = {
                      {"f": "days_listed", "op": ">=", "v": 60}],
          "maxPos": 2, "exit": {"model": "next_day_tp_sl", "take_profit_pct": 4, "stop_loss_pct": 2}},
     ),
+    "새지표": (
+        {"filters": ["change_pct >= 3", "trade_value_rank <= 30", "disparity_20 <= 120", "up_streak <= 3",
+                     "market_above_ma20 == 1", "market_change >= -1", "body_pct >= 1", "range_squeeze <= 1.5"],
+         "max_positions": 3, "exit": "next_close", "rank_by": "change_pct"},
+        {"filters": [{"f": "change_pct", "op": ">=", "v": 3},
+                     {"f": "trade_value_rank", "op": "<=", "v": 30},
+                     {"f": "disparity_20", "op": "<=", "v": 120},
+                     {"f": "up_streak", "op": "<=", "v": 3},
+                     {"f": "market_above_ma20", "op": "==", "v": 1},
+                     {"f": "market_change", "op": ">=", "v": -1},
+                     {"f": "body_pct", "op": ">=", "v": 1},
+                     {"f": "range_squeeze", "op": "<=", "v": 1.5}],
+         "maxPos": 3, "exit": {"model": "next_close"}, "rankBy": "change_pct"},
+    ),
 }
 
 
@@ -58,9 +72,8 @@ def data_dir(tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def panel():
-    p = build_panel([SampleDailyAdapter(n_codes=120)], START, END)
-    return features.compute(p, ["change_pct", "trade_value", "trade_value_ratio_20", "close_to_high",
-                                "upper_tail_ratio", "above_ma20", "new_high_60", "days_listed"])
+    p = build_panel([SampleDailyAdapter(n_codes=120), SampleIndexAdapter()], START, END)
+    return features.compute(p, FEATURES)
 
 
 @pytest.mark.parametrize("case", list(CASES))
